@@ -37,24 +37,35 @@ class AppServiceProvider extends ServiceProvider
      *
      */
     public function boot(Request $request)
-    {
-        if(env('FORCE_HTTPS', false)) {
-            URL::forceScheme('https');
+{
+    // Force https when behind a proxy in prod (or when FORCE_HTTPS=true)
+    if (app()->environment('production')) {
+        $forwardedProtoIsHttps = strtolower((string) $request->headers->get('x-forwarded-proto')) === 'https';
+
+        if ($forwardedProtoIsHttps || env('FORCE_HTTPS', true)) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        if (!App::runningInConsole()) {
-            Config::set('addon_admin_routes',$this->get_addon_admin_routes());
-            Config::set('get_payment_publish_status',$this->get_payment_publish_status());
-            Config::set('default_pagination', 25);
-            Paginator::useBootstrap();
-            try {
-                foreach(Helpers::get_view_keys() as $key=>$value)
-                {
-                    view()->share($key, $value);
-                }
-            } catch (\Exception $e){
-
-            }
+        // Ensure URL::asset() etc. build absolute https URLs from APP_URL
+        if ($appUrl = config('app.url')) {
+            \Illuminate\Support\Facades\URL::forceRootUrl($appUrl);
         }
     }
+
+    if (!\Illuminate\Support\Facades\App::runningInConsole()) {
+        \Illuminate\Support\Facades\Config::set('addon_admin_routes', $this->get_addon_admin_routes());
+        \Illuminate\Support\Facades\Config::set('get_payment_publish_status', $this->get_payment_publish_status());
+        \Illuminate\Support\Facades\Config::set('default_pagination', 25);
+        \Illuminate\Pagination\Paginator::useBootstrap();
+
+        try {
+            foreach (\App\CentralLogics\Helpers::get_view_keys() as $key => $value) {
+                view()->share($key, $value);
+            }
+        } catch (\Exception $e) {
+            // swallow
+        }
+    }
+}
+
 }
