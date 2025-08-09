@@ -8,16 +8,19 @@ use Illuminate\Http\Request;
 class TrustProxies extends Middleware
 {
     /**
-     * The trusted proxies for this application.
-     *
-     * @var array|string|null
+     * Trust DO’s edge proxy/load balancer.
+     * Use "*" so X-Forwarded-* headers are honored.
      */
     protected $proxies;
 
+    public function __construct()
+    {
+        // You can override with TRUSTED_PROXIES in .env if needed.
+        $this->proxies = env('TRUSTED_PROXIES', '*');
+    }
+
     /**
-     * The headers that should be used to detect proxies.
-     *
-     * @var int
+     * Use all X-Forwarded-* headers so Laravel knows the original scheme/host.
      */
-    protected $headers = Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_AWS_ELB;
+    protected $headers = Request::HEADER_X_FORWARDED_ALL;
 }
